@@ -1,0 +1,87 @@
+version: '3.9'
+
+# =============================================================
+# E-Learning Management System — Docker Compose
+# Services: PostgreSQL | Spring Boot Backend | React Frontend
+# =============================================================
+
+services:
+
+  # ── 1. PostgreSQL Database ─────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: lms-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB:       lms
+      POSTGRES_USER:     postgres
+      POSTGRES_PASSWORD: 1234
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d lms"]
+      interval: 10s
+      timeout:  5s
+      retries:  5
+
+  # ── 2. Spring Boot Backend ─────────────────────────────────
+  backend:
+    build:
+      context:    ./backend
+      dockerfile: Dockerfile
+    container_name: lms-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL:        jdbc:postgresql://db:5432/lms
+      DB_USERNAME:   postgres
+      DB_PASSWORD:   1234
+      PORT:          8080
+      FRONTEND_URL:  http://localhost:3000
+      JWT_SECRET:    mySecretKey1234567890abcdefghijklmnopqrstuvwxyz
+      JWT_EXPIRATION: 86400000
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: admin123
+      ADMIN_EMAIL:   admin@gmail.com
+    ports:
+      - "8080:8080"
+    networks:
+      - lms-network
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout:  10s
+      retries:  5
+      start_period: 60s
+
+  # ── 3. React Frontend ──────────────────────────────────────
+  frontend:
+    build:
+      context:    ./frontend
+      dockerfile: Dockerfile
+    container_name: lms-frontend
+    restart: unless-stopped
+    depends_on:
+      backend:
+        condition: service_healthy
+    ports:
+      - "3000:80"
+    networks:
+      - lms-network
+
+# =============================================================
+# Volumes & Networks
+# =============================================================
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  lms-network:
+    driver: bridge

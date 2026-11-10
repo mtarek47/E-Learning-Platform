@@ -1,14 +1,16 @@
-# ---------- Build stage ----------
-FROM maven:3.9.9-eclipse-temurin-17 AS builder
+# ---------- Build stage (Gradle) ----------
+FROM eclipse-temurin:17-jdk-alpine AS builder
 WORKDIR /app
 
-# Copy pom.xml and download deps
-COPY pom.xml .
-RUN mvn dependency:go-offline -B
+# Copy Gradle wrapper and config first (layer cache)
+COPY gradlew .
+COPY gradle ./gradle
+COPY build.gradle settings.gradle ./
+RUN chmod +x gradlew && ./gradlew dependencies --no-daemon -q 2>/dev/null || true
 
-# Copy source and build
+# Copy source and build fat JAR
 COPY src ./src
-RUN mvn clean package -DskipTests
+RUN ./gradlew bootJar --no-daemon -x test
 
 # ---------- Runtime stage ----------
 FROM eclipse-temurin:17-jre-alpine
