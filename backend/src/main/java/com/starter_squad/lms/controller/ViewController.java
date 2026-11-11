@@ -34,12 +34,12 @@ public class ViewController {
     @GetMapping("/")
     public String home(@org.springframework.security.core.annotation.AuthenticationPrincipal UserPrincipal principal) {
         if (principal == null) {
-            return "redirect:" + getCleanUrl();
+            return "redirect:/swagger-ui/index.html";
         }
         String role = principal.getAuthorities().iterator().next().getAuthority();
         if (role.equals("ROLE_ADMIN")) return "redirect:/admin/dashboard";
         if (role.equals("ROLE_INSTRUCTOR")) return "redirect:/instructor/dashboard";
-        return "redirect:" + getCleanUrl() + "/courses";
+        return "redirect:/swagger-ui/index.html";
     }
 
     /**
